@@ -1,0 +1,15 @@
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//DTD//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.chat.mapper.UserMapper">
+    <select id="findById" resultType="com.example.chat.pojo.User">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+    <select id="findByUsername" resultType="com.example.chat.pojo.User">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, password, email)
+        VALUES (#{username}, #{password}, #{email})
+    </insert>
+</mapper>

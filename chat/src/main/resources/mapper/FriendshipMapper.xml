@@ -1,0 +1,25 @@
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//DTD//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.chat.mapper.FriendshipMapper">
+    <insert id="addFriendship">
+        INSERT INTO friendships (user1Id, user2Id, created_at, isAccepted)
+        VALUES (#{user1Id}, #{user2Id}, NOW(), false)
+    </insert>
+    <select id="getFriendsByUserId" resultType="java.lang.Integer">
+        SELECT user2Id FROM friendships WHERE user1Id = #{userId} AND isAccepted = true
+        UNION
+        SELECT user1Id FROM friendships WHERE user2Id = #{userId} AND isAccepted = true
+    </select>
+    <select id="isFriendshipAccepted" resultType="java.lang.Boolean">
+        SELECT isAccepted FROM friendships
+        WHERE (user1Id = #{user1Id} AND user2Id = #{user2Id})
+           OR (user1Id = #{user2Id} AND user2Id = #{user1Id})
+    </select>
+    <update id="acceptFriendship">
+        UPDATE friendships
+        SET isAccepted = true
+        WHERE (user1Id = #{user1Id} AND user2Id = #{user2Id})
+           OR (user1Id = #{user2Id} AND user2Id = #{user1Id})
+    </update>
+</mapper>
