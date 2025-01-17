@@ -1,7 +1,6 @@
 package com.example.chat.controller;
 
-
-
+import com.example.chat.pojo.User;
 import com.example.chat.service.FriendshipService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,5 +32,10 @@ public class FriendshipController {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Cache-Control","no-cache");
         friendshipService.acceptFriendship(user1Id, user2Id);
+    }
+
+    @GetMapping("/search")
+    public List<User> searchFriends(@RequestParam String keyword) {
+        return friendshipService.searchFriends(keyword);
     }
 }
