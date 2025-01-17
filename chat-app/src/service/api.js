@@ -26,35 +26,42 @@ const getUserByUsername = (username) => {
     return axios.get(`${API_URL}/users/${username}`);
 };
 
-const addFriendship = (user1Id, user2Id) => {
-    return axios.post(`${API_URL}/friendships/add`, null, { params: { user1Id, user2Id } });
-};
+
 
 const getFriendsByUserId = (userId) => {
     return axios.get(`${API_URL}/friendships/${userId}`);
+};
+
+
+
+const getMessagesBetweenUsers = (senderId, receiverId) => {
+    return axios.get(`${API_URL}/messages/${senderId}/${receiverId}`);
+};
+const getAcceptedFriends = (userId) => {
+    return axios.get(`${API_URL}/friendships/${userId}`);
+};
+
+const addFriendship = (user1Id, user2Id) => {
+    return axios.post(`${API_URL}/friendships/add`, null, { params: { user1Id, user2Id } });
 };
 
 const acceptFriendship = (user1Id, user2Id) => {
     return axios.post(`${API_URL}/friendships/accept`, null, { params: { user1Id, user2Id } });
 };
 
-const getAcceptedFriends = (userId) => {
-    return axios.get(`${API_URL}/friendships/${userId}`);
+const searchFriends = (keyword) => {
+    return axios.get(`${API_URL}/friendships/search`, { params: { keyword } });
 };
-
-const getMessagesBetweenUsers = (senderId, receiverId) => {
-    return axios.get(`${API_URL}/messages/${senderId}/${receiverId}`);
-};
-
 export default {
     register,
     login,
     sendMessage,
     getUserById,
     getUserByUsername,
-    addFriendship,
     getFriendsByUserId,
-    acceptFriendship,
+    getMessagesBetweenUsers,
     getAcceptedFriends,
-    getMessagesBetweenUsers
+    addFriendship,
+    acceptFriendship,
+    searchFriends
 };

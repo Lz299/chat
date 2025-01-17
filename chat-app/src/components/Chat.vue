@@ -1,5 +1,6 @@
 <template>
   <div>
+    <h1 align="center">{{ myid }}</h1>
     <h2>Chat with {{ receiverId }}</h2>
     <div v-for="(msg, index) in messages" :key="index">{{ msg.message }}</div>
     <input v-model="inputMessage" @keyup.enter="sendMessage" />
@@ -19,6 +20,7 @@ export default {
     const senderId = parseInt(route.params.senderId);
     const receiverId = parseInt(route.params.receiverId);
     const messages = ref([]);
+    const myid=localStorage.getItem("loginId");
     const inputMessage = ref('');
     let socket;
 
