@@ -9,19 +9,37 @@
     <input type="text" v-model="searchQuery" placeholder="Search friends by name or id" />
     <button @click="searchFriends">Search</button>
     <button @click="addFriend">Add Friend</button>
-    <button @click="acceptFriend">Accept Friend</button>
+
+    <!-- 好友请求列表 -->
+    <h3>Friend Requests</h3>
+    <ul>
+      <li v-for="(request, index) in friendRequests" :key="index">
+        <span>{{ request.username }} sent you a friend request</span>
+        <span v-if="request.status==='pending'">
+          <button  @click="acceptFriendRequest(request.id)">Accept</button>
+        <button @click="rejectFriendRequest(request.id)">Reject</button>
+        </span>
+
+      </li>
+    </ul>
+
     <!-- 新增下拉框展示搜索到的好友 -->
     <select v-model="selectedFriend" @change="handleSelectChange">
-      <option v-for="friend in searchResults" :key="friend.id" :value="friend">{{ friend.username === null? "" : friend.username }}</option>
+      <option v-for="friend in searchResults" :key="friend.id" :value="friend">{{ friend.username || '' }}</option>
     </select>
     <!-- 新增添加好友模态框 -->
     <div class="modal" v-if="showAddFriendModal && selectedFriend">
       <div class="modal-content">
         <span class="close" @click="hideAddFriendModal">&times;</span>
         <p>Do you want to add {{ selectedFriend.username }} as a friend?</p>
-        <button @click="addFriend(selectedFriend.id)">Yes</button>
+        <button @click="confirmAddFriend">Yes</button>
         <button @click="hideAddFriendModal">No</button>
       </div>
+    </div>
+    <div v-if="friendRequestNotification" class="friend-request-notification">
+      <p>{{ friendRequestNotification }}</p>
+      <button @click="acceptFriendRequestNotification">Accept</button>
+      <button @click="rejectFriendRequestNotification">Reject</button>
     </div>
   </div>
 </template>
@@ -35,26 +53,47 @@ export default {
   setup() {
     const friends = ref([]);
     const router = useRouter();
-    let socket;
     const searchQuery = ref('');
     const selectedFriend = ref(null);
-    let showAddFriendModal = ref(false);
+    const showAddFriendModal = ref(false);
     const searchResults = ref([]);
+    const friendRequestNotification = ref('');
+    const friendRequests = ref([]); // 新增：存储好友请求列表
+    let chatSocket;
+    let notificationSocket;
 
-    const connectWebSocket = () => {
-      socket = new WebSocket('ws://localhost:8089/chat');
-      socket.onopen = () => {
-        console.log('WebSocket connected');
-      };
-      socket.onmessage = (event) => {
-        // 处理消息更新好友状态
-      };
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-      socket.onclose = () => {
-        console.log('WebSocket closed');
-      };
+    const connectWebSocket = (url, onMessageHandler) => {
+      const socket = new WebSocket(url);
+      socket.onopen = () => console.log(`${url} WebSocket connected`);
+      socket.onmessage = onMessageHandler;
+      socket.onerror = (error) => console.error(`${url} WebSocket error:`, error);
+      socket.onclose = () => console.log(`${url} WebSocket closed`);
+      return socket;
+    };
+
+    const connectChatWebSocket = () => {
+      chatSocket = connectWebSocket('ws://localhost:8089/chat', (event) => {
+        console.log("Received chat message:", event.data);
+      });
+    };
+
+    const connectNotificationWebSocket = () => {
+      const userId = localStorage.getItem("loginId");
+      notificationSocket = connectWebSocket(`ws://localhost:8089/notification?userId=${userId}`, (event) => {
+        console.log("Received notification message:", event.data);
+        const result = confirm("您有一个好友请求是否接受"+JSON.parse(event.data).username);
+        if (result) {
+          acceptFriendRequest(JSON.parse(event.data).id)
+        } else {
+          console.log("忽略");
+          fetchFriendRequests();
+        }
+
+
+        if (event.data.startsWith("friend_request:")) {
+          friendRequestNotification.value = event.data.split(":")[1];
+        }
+      });
     };
 
     const isFriendOnline = (friendId) => {
@@ -62,34 +101,70 @@ export default {
       return false;
     };
 
-    const addFriend = async (friendId) => {
+    const addFriend = async () => {
       try {
-        // 假设添加好友逻辑，例如添加用户 1 和用户 2 为好友
         await api.addFriendship(localStorage.getItem("loginId"), selectedFriend.value.id);
-        console.log('Friend added');
+        console.log('Friend request sent');
+        sendFriendRequestNotification(selectedFriend.value.id);
       } catch (error) {
         console.error('Error adding friend:', error);
       }
     };
 
-    const acceptFriend = async () => {
+    const acceptFriend = async (id) => {
       try {
-        // 假设接受好友逻辑，例如用户 1 接受用户 2 的好友请求
-        await api.acceptFriendship(localStorage.getItem("loginId"), 3);
+        console.log("id"+id)
+        await api.acceptFriendship(localStorage.getItem("loginId"), id);
         console.log('Friend accepted');
       } catch (error) {
         console.error('Error accepting friend:', error);
       }
     };
 
+    // 新增：接受好友请求列表中的请求
+    const acceptFriendRequest = async (requestId) => {
+      try {
+        console.log("requestId"+requestId)
+        await api.acceptFriendship(localStorage.getItem("loginId"),requestId);
+        // 刷新好友请求列表
+        fetchFriendRequests();
+      } catch (error) {
+        fetchFriendRequests();
+        console.error('Error accepting friend request:', error);
+      }
+    };
+
+    // 新增：拒绝好友请求列表中的请求
+    const rejectFriendRequest = async (requestId) => {
+      try {
+        await api.rejectFriendship(localStorage.getItem("loginId"),requestId);
+        // 刷新好友请求列表
+        fetchFriendRequests();
+      } catch (error) {
+        console.error('Error rejecting friend request:', error);
+      }
+    };
+
+    const acceptFriendRequestNotification = async () => {
+      try {
+        const senderId = friendRequestNotification.value.split(' ')[4];
+        await acceptFriend(parseInt(senderId));
+        friendRequestNotification.value = '';
+      } catch (error) {
+        console.error('Error accepting friend request:', error);
+      }
+    };
+
+    const rejectFriendRequestNotification = () => {
+      friendRequestNotification.value = '';
+    };
+
     const navigateToChat = (friendId) => {
-      // 假设用户 ID 为 1
       router.push({ name: 'Chat', params: { senderId: localStorage.getItem("loginId"), receiverId: friendId } });
     };
 
     const searchFriends = async () => {
       try {
-        // 假设搜索好友逻辑，根据搜索Query调用后端API搜索好友
         const response = await api.searchFriends(searchQuery.value);
         searchResults.value = response.data;
       } catch (error) {
@@ -98,20 +173,42 @@ export default {
     };
 
     const handleSelectChange = () => {
-      if (selectedFriend.value) {
-        showAddFriendModal.value = true;
-      }
+      showAddFriendModal.value = true;
     };
 
     const hideAddFriendModal = () => {
       showAddFriendModal.value = false;
     };
 
+    const confirmAddFriend = async () => {
+      await addFriend();
+      hideAddFriendModal();
+    };
+
+    const sendFriendRequestNotification = (receiverId) => {
+      if (notificationSocket && notificationSocket.readyState === WebSocket.OPEN) {
+        const message = `friend_request:You have a new friend request from User ${localStorage.getItem("loginId")}`;
+        notificationSocket.send(message);
+      }
+    };
+
+    // 新增：获取好友请求列表
+    const fetchFriendRequests = async () => {
+      try {
+        const response = await api.getFriendRequests(localStorage.getItem("loginId"));
+        friendRequests.value = response.data;
+      } catch (error) {
+        console.error('Error fetching friend requests:', error);
+      }
+    };
+
     onMounted(async () => {
       try {
-        // 假设用户 ID 为 1
         friends.value = (await api.getAcceptedFriends(localStorage.getItem("loginId"))).data;
-        connectWebSocket();
+        connectChatWebSocket();
+        connectNotificationWebSocket();
+        // 新增：获取好友请求列表
+        fetchFriendRequests();
       } catch (error) {
         console.error('Error fetching friends:', error);
       }
@@ -128,60 +225,15 @@ export default {
       selectedFriend,
       showAddFriendModal,
       hideAddFriendModal,
-      searchResults
+      searchResults,
+      friendRequestNotification,
+      acceptFriendRequestNotification,
+      rejectFriendRequestNotification,
+      friendRequests, // 新增：将 friendRequests 加入返回对象
+      acceptFriendRequest,
+      rejectFriendRequest,
+      fetchFriendRequests // 新增：将 fetchFriendRequests 加入返回对象
     };
   }
 };
 </script>
-
-<!-- 样式 -->
-<style>
-.hello {
-  text-align: center;
-}
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.4);
-}
-.modal-content {
-           background-color: #fefefe;
-           margin: 15% auto;
-           padding: 20px;
-           border: 1px solid #888;
-           width: 30%;
-         }
-.close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.close:hover,
-.close:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
-}
-</style>

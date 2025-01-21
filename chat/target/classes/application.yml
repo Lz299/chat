@@ -1,4 +1,10 @@
 spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
   datasource:
     url: jdbc:mysql://localhost:3306/chat?useSSL=false&serverTimezone=UTC
     username: root

@@ -2,10 +2,7 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//DTD//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.chat.mapper.FriendshipMapper">
-    <insert id="addFriendship">
-        INSERT INTO friendships (user1Id, user2Id, created_at, isAccepted)
-        VALUES (#{user1Id}, #{user2Id}, NOW(), false)
-    </insert>
+
     <select id="getFriendsByUserId" resultType="java.lang.Integer">
         SELECT user2Id FROM friendships WHERE user1Id = #{userId} AND isAccepted = true
         UNION
@@ -16,10 +13,28 @@
         WHERE (user1Id = #{user1Id} AND user2Id = #{user2Id})
            OR (user1Id = #{user2Id} AND user2Id = #{user1Id})
     </select>
+    <insert id="addFriendship">
+        INSERT INTO friend_requests (sender_id, receiver_id, created_at)
+        VALUES (#{user1Id}, #{user2Id}, NOW())
+    </insert>
     <update id="acceptFriendship">
-        UPDATE friendships
-        SET isAccepted = true
-        WHERE (user1Id = #{user1Id} AND user2Id = #{user2Id})
-           OR (user1Id = #{user2Id} AND user2Id = #{user1Id})
+        UPDATE friend_requests
+        SET status = 'accepted'
+        WHERE sender_id = #{user1Id} AND receiver_id = #{user2Id}
     </update>
+    <update id="rejectFriendship">
+        UPDATE friend_requests
+        SET status = 'rejected'
+        WHERE sender_id = #{user1Id} AND receiver_id = #{user2Id}
+    </update>
+    <insert id="createFriendship">
+        INSERT INTO friendships (user1id, user2id, created_at,isAccepted)
+        VALUES (#{user1Id}, #{user2Id}, NOW(),1)
+    </insert>
+    <select id="getFriendRequests" resultType="com.example.chat.pojo.User">
+        SELECT us.id,us.username,fr.status
+        FROM friend_requests fr
+                 JOIN users us ON fr.sender_id = us.id
+        WHERE fr.receiver_id =#{userId}
+    </select>
 </mapper>

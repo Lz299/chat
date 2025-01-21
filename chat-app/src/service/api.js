@@ -48,10 +48,19 @@ const addFriendship = (user1Id, user2Id) => {
 const acceptFriendship = (user1Id, user2Id) => {
     return axios.post(`${API_URL}/friendships/accept`, null, { params: { user1Id, user2Id } });
 };
+const rejectFriendship = (user1Id, user2Id) => {
+    return axios.post(`${API_URL}/friendships/reject`, null, { params: { user1Id, user2Id } });
+};
 
 const searchFriends = (keyword) => {
     return axios.get(`${API_URL}/friendships/search`, { params: { keyword } });
 };
+
+const getFriendRequests= (userId) => {
+    return axios.get(`${API_URL}/friendships/requests/${userId}`);
+};
+
+
 export default {
     register,
     login,
@@ -63,5 +72,7 @@ export default {
     getAcceptedFriends,
     addFriendship,
     acceptFriendship,
-    searchFriends
+    rejectFriendship,
+    searchFriends,
+    getFriendRequests
 };

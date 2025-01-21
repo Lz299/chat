@@ -10,8 +10,17 @@ public class User {
     private String password;
     private String email;
     private Date created_at;
+    private String status ;
 
     public User() {
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public int getId() {
@@ -62,6 +71,7 @@ public class User {
                 ", password='" + password + '\'' +
                 ", email='" + email + '\'' +
                 ", created_at=" + created_at +
+                ", status='" + status + '\'' +
                 '}';
     }
 }
